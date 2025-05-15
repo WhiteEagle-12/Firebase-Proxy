@@ -5,10 +5,10 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ Parse JSON request bodies
+// ✅ Middleware to parse JSON
 app.use(express.json());
 
-// ✅ Generate Firebase access token from service account
+// ✅ Get Google access token from service account
 async function getAccessToken() {
   const credentials = JSON.parse(process.env.SERVICE_ACCOUNT_JSON);
   const auth = new GoogleAuth({
@@ -21,7 +21,7 @@ async function getAccessToken() {
   return token.token;
 }
 
-// ✅ Write metadata to Firestore
+// ✅ POST /firestore/:collection/:docId — Write to Firestore
 app.post('/firestore/:collection/:docId', async (req, res) => {
   try {
     console.log('🔥 Incoming request body:', JSON.stringify(req.body, null, 2));
@@ -33,11 +33,17 @@ app.post('/firestore/:collection/:docId', async (req, res) => {
     const token = await getAccessToken();
     const { collection, docId } = req.params;
 
-    console.log('📦 Sending payload to Firestore:', JSON.stringify(req.body, null, 2));
+    // ✅ Build the full Firestore document
+    const firestoreDoc = {
+      name: `projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
+      fields: req.body.fields,
+    };
+
+    console.log('📦 Sending full document to Firestore:', JSON.stringify(firestoreDoc, null, 2));
 
     const result = await axios.put(
       `https://firestore.googleapis.com/v1/projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
-      req.body, // ✅ Send plain object (not a string)
+      firestoreDoc,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -53,7 +59,7 @@ app.post('/firestore/:collection/:docId', async (req, res) => {
   }
 });
 
-// ✅ Read metadata from Firestore
+// ✅ GET /firestore/:collection/:docId — Read from Firestore
 app.get('/firestore/:collection/:docId', async (req, res) => {
   try {
     const token = await getAccessToken();
@@ -75,12 +81,12 @@ app.get('/firestore/:collection/:docId', async (req, res) => {
   }
 });
 
-// ✅ Health check
+// ✅ Health check route
 app.get('/', (req, res) => {
   res.send('✅ Firebase proxy is running.');
 });
 
-// ✅ Start server
+// ✅ Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Firebase proxy running on port ${PORT}`);
