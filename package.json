@@ -2,6 +2,7 @@
   "name": "firebase-proxy",
   "version": "1.0.0",
   "main": "index.cjs",
+  "type": "commonjs",
   "scripts": {
     "start": "node --openssl-legacy-provider index.cjs"
   },
@@ -10,5 +11,8 @@
     "dotenv": "^16.3.1",
     "google-auth-library": "^9.0.0",
     "node-fetch": "^2.6.11"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
