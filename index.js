@@ -5,7 +5,7 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ Required middleware to parse incoming JSON
+// ✅ Middleware to parse JSON from requests
 app.use(express.json());
 
 async function getAccessToken() {
@@ -20,7 +20,7 @@ async function getAccessToken() {
   return token.token;
 }
 
-// ✅ Write to Firestore (with debug logging)
+// ✅ Write to Firestore
 app.post('/firestore/:collection/:docId', async (req, res) => {
   try {
     console.log('🔥 Incoming request body:', JSON.stringify(req.body, null, 2));
@@ -34,7 +34,7 @@ app.post('/firestore/:collection/:docId', async (req, res) => {
 
     const result = await axios.patch(
       `https://firestore.googleapis.com/v1/projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
-      req.body,
+      JSON.stringify(req.body), // 🔧 Explicitly stringify JSON
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -50,7 +50,7 @@ app.post('/firestore/:collection/:docId', async (req, res) => {
   }
 });
 
-// ✅ Read from Firestore
+// ✅ Read a document from Firestore
 app.get('/firestore/:collection/:docId', async (req, res) => {
   try {
     const token = await getAccessToken();
@@ -72,7 +72,12 @@ app.get('/firestore/:collection/:docId', async (req, res) => {
   }
 });
 
+// ✅ Health check or root fallback
+app.get('/', (req, res) => {
+  res.send('✅ Firebase proxy is running.');
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🔥 Firebase proxy running on port ${PORT}`);
+  console.log(`🚀 Firebase proxy running on port ${PORT}`);
 });
