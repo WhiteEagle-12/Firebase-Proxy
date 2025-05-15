@@ -5,7 +5,7 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ Middleware to parse JSON from requests
+// ✅ Middleware to parse incoming JSON
 app.use(express.json());
 
 async function getAccessToken() {
@@ -20,7 +20,7 @@ async function getAccessToken() {
   return token.token;
 }
 
-// ✅ Write to Firestore
+// ✅ POST to Firestore with payload debug log
 app.post('/firestore/:collection/:docId', async (req, res) => {
   try {
     console.log('🔥 Incoming request body:', JSON.stringify(req.body, null, 2));
@@ -32,9 +32,13 @@ app.post('/firestore/:collection/:docId', async (req, res) => {
     const token = await getAccessToken();
     const { collection, docId } = req.params;
 
+    // 🔍 Log and send the payload
+    const payload = JSON.stringify(req.body);
+    console.log('📦 Sending payload to Firestore:', payload);
+
     const result = await axios.patch(
       `https://firestore.googleapis.com/v1/projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
-      JSON.stringify(req.body), // 🔧 Explicitly stringify JSON
+      payload,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -50,7 +54,7 @@ app.post('/firestore/:collection/:docId', async (req, res) => {
   }
 });
 
-// ✅ Read a document from Firestore
+// ✅ GET from Firestore
 app.get('/firestore/:collection/:docId', async (req, res) => {
   try {
     const token = await getAccessToken();
@@ -72,7 +76,7 @@ app.get('/firestore/:collection/:docId', async (req, res) => {
   }
 });
 
-// ✅ Health check or root fallback
+// ✅ Health check route
 app.get('/', (req, res) => {
   res.send('✅ Firebase proxy is running.');
 });
