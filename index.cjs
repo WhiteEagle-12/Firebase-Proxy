@@ -35,7 +35,7 @@ app.post('/firestore/:collection/:docId', async (req, res) => {
 
     console.log('📦 Sending payload to Firestore:', JSON.stringify(req.body, null, 2));
 
-    const result = await axios.patch(
+    const result = await axios.put(
       `https://firestore.googleapis.com/v1/projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
       req.body, // ✅ Send plain object (not a string)
       {
