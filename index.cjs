@@ -1,14 +1,11 @@
 const express = require('express');
 const { GoogleAuth } = require('google-auth-library');
-const axios = require('axios');
+const fetch = require('node-fetch'); // ✅ native-style fetch
 require('dotenv').config();
 
 const app = express();
-
-// ✅ Middleware to parse JSON
 app.use(express.json());
 
-// ✅ Get Google access token from service account
 async function getAccessToken() {
   const credentials = JSON.parse(process.env.SERVICE_ACCOUNT_JSON);
   const auth = new GoogleAuth({
@@ -21,74 +18,84 @@ async function getAccessToken() {
   return token.token;
 }
 
-// ✅ POST /firestore/:collection/:docId — Write to Firestore
+// ✅ POST to Firestore using fetch
 app.post('/firestore/:collection/:docId', async (req, res) => {
   try {
-    console.log('🔥 Incoming request body:', JSON.stringify(req.body, null, 2));
-
-    if (!req.body || !req.body.fields) {
+    const { collection, docId } = req.params;
+    if (!req.body?.fields) {
       return res.status(400).json({ error: 'Missing or malformed fields in request body' });
     }
 
     const token = await getAccessToken();
-    const { collection, docId } = req.params;
 
-    // ✅ Build the full Firestore document
-   const firestoreDoc = JSON.parse(
-  JSON.stringify({
-    name: `projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
-    fields: req.body.fields,
-  })
-);
-    console.log('📦 Sending full document to Firestore:', JSON.stringify(firestoreDoc, null, 2));
+    // 🔧 Construct full Firestore document
+    const firestoreDoc = {
+      name: `projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
+      fields: req.body.fields,
+    };
 
-    const result = await axios.put(
-      `https://firestore.googleapis.com/v1/projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
-      firestoreDoc,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const url = `https://firestore.googleapis.com/v1/projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`;
 
-    res.json(result.data);
+    const rawBody = JSON.stringify(firestoreDoc, null, 2);
+    console.log('📦 Final body to Firestore:\n', rawBody);
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: rawBody,
+    });
+
+    const responseBody = await response.text();
+
+    if (!response.ok) {
+      console.error('❌ Firestore error response:', responseBody);
+      return res.status(response.status).json({ error: responseBody });
+    }
+
+    console.log('✅ Firestore success:', responseBody);
+    res.status(200).send(responseBody);
   } catch (err) {
-    console.error('❌ Error in POST /firestore:', err.response?.data || err.message);
-    res.status(err.response?.status || 500).json({ error: err.message });
+    console.error('❌ Server error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// ✅ GET /firestore/:collection/:docId — Read from Firestore
+// ✅ GET from Firestore (still using Axios-style fetch)
 app.get('/firestore/:collection/:docId', async (req, res) => {
   try {
-    const token = await getAccessToken();
     const { collection, docId } = req.params;
+    const token = await getAccessToken();
 
-    const result = await axios.get(
-      `https://firestore.googleapis.com/v1/projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const url = `https://firestore.googleapis.com/v1/projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    res.json(result.data);
+    const responseBody = await response.text();
+
+    if (!response.ok) {
+      console.error('❌ Firestore GET error:', responseBody);
+      return res.status(response.status).json({ error: responseBody });
+    }
+
+    res.status(200).send(responseBody);
   } catch (err) {
-    console.error('❌ Error in GET /firestore:', err.response?.data || err.message);
-    res.status(err.response?.status || 500).json({ error: err.message });
+    console.error('❌ GET /firestore error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// ✅ Health check route
 app.get('/', (req, res) => {
-  res.send('✅ Firebase proxy is running.');
+  res.send('✅ Firebase proxy with fetch is running.');
 });
 
-// ✅ Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Firebase proxy running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
