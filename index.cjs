@@ -34,11 +34,12 @@ app.post('/firestore/:collection/:docId', async (req, res) => {
     const { collection, docId } = req.params;
 
     // ✅ Build the full Firestore document
-    const firestoreDoc = {
-      name: `projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
-      fields: req.body.fields,
-    };
-
+   const firestoreDoc = JSON.parse(
+  JSON.stringify({
+    name: `projects/will-s-storage/databases/(default)/documents/${collection}/${docId}`,
+    fields: req.body.fields,
+  })
+);
     console.log('📦 Sending full document to Firestore:', JSON.stringify(firestoreDoc, null, 2));
 
     const result = await axios.put(
